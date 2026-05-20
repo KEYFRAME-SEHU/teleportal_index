@@ -1,8 +1,501 @@
-<html>
-    <head>
-        <title>Virtual Worlds Museum</title>
-    </head>
-    <body>
-        <h1>First version of the index page...</h1>
-    </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Virtual Worlds Museum Index</title>
+  <style>
+    :root {
+      --bg-top: #08111f;
+      --bg-bottom: #030712;
+      --panel: rgba(7, 12, 24, 0.68);
+      --panel-line: rgba(148, 163, 184, 0.2);
+      --text: #e5eefc;
+      --muted: #9fb0c8;
+      --accent: #7dd3fc;
+      --accent-strong: #a7f3d0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      overflow: hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(34, 211, 238, 0.12), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.1), transparent 30%),
+        linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+    }
+
+    body {
+      position: relative;
+    }
+
+    #scene {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #scene canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hud,
+    .tooltip {
+      position: absolute;
+      z-index: 2;
+      border: 1px solid var(--panel-line);
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+    }
+
+    .hud {
+      top: 18px;
+      left: 18px;
+      width: min(360px, calc(100vw - 36px));
+      max-height: calc(100vh - 36px);
+      padding: 16px 18px;
+      border-radius: 22px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(125, 211, 252, 0.25);
+      color: var(--accent);
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 12px 0 10px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 0.95;
+      letter-spacing: -0.05em;
+    }
+
+    .hud p,
+    .meta-row,
+    .legend {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .meta {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .meta-row strong {
+      color: var(--text);
+    }
+
+    .legend {
+      margin-top: 14px;
+      font-size: 0.93rem;
+    }
+
+    .preview {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .preview-title {
+      margin: 0 0 6px;
+      font-size: 1rem;
+      color: var(--accent-strong) !important;
+    }
+
+    .preview-copy {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.9rem;
+    }
+
+    .preview-copy strong,
+    .preview-copy b {
+      font-weight: 600;
+    }
+
+    .preview-meta {
+      color: var(--muted);
+    }
+
+    .preview-museum {
+      color: var(--accent);
+    }
+
+    .preview-world {
+      color: var(--accent-strong);
+    }
+
+    .size-indicator {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 3px;
+      margin-left: 2px;
+      color: var(--accent-strong);
+      white-space: nowrap;
+    }
+
+    .size-person {
+      position: relative;
+      display: inline-block;
+      width: 7px;
+      height: 11px;
+      flex: 0 0 auto;
+    }
+
+    .size-person::before,
+    .size-person::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      background: currentColor;
+      opacity: 0.95;
+    }
+
+    .size-person::before {
+      top: 0;
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+    }
+
+    .size-person::after {
+      top: 4px;
+      width: 7px;
+      height: 7px;
+      border-radius: 3px 3px 2px 2px;
+    }
+
+    .preview-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .preview-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(125, 211, 252, 0.28);
+      background: rgba(125, 211, 252, 0.08);
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .preview-button:hover,
+    .preview-button:focus-visible {
+      outline: none;
+      border-color: rgba(167, 243, 208, 0.38);
+    }
+
+    .preview-button.museum-link {
+      color: var(--accent);
+      border-color: rgba(125, 211, 252, 0.26);
+      background: rgba(125, 211, 252, 0.08);
+    }
+
+    .preview-button.world-link {
+      color: var(--accent-strong);
+      border-color: rgba(167, 243, 208, 0.26);
+      background: rgba(167, 243, 208, 0.08);
+    }
+
+    .preview-button[hidden] {
+      display: none;
+    }
+
+    .preview-snapshot {
+      display: inline-block;
+      margin-top: 14px;
+      width: min(200px, 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .preview-snapshot[hidden] {
+      display: none;
+    }
+
+    .preview-snapshot img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .preview-section {
+      margin-top: 14px;
+    }
+
+    .preview-section[hidden] {
+      display: none;
+    }
+
+    .preview-section-title {
+      margin: 0 0 8px;
+      color: var(--text);
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .preview-details {
+      display: grid;
+      gap: 8px;
+      font-size: 0.86rem;
+    }
+
+    .preview-detail {
+      display: grid;
+      gap: 3px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .preview-detail-key {
+      color: var(--muted);
+      font-size: 0.75rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .preview-detail-value {
+      color: var(--text);
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .preview-detail-value a {
+      color: var(--accent);
+    }
+
+    .preview-tree {
+      display: grid;
+      gap: 8px;
+    }
+
+    .preview-tree details {
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .preview-tree details.preview-tree-leaf {
+      cursor: pointer;
+      transition: background 160ms ease, border-color 160ms ease;
+    }
+
+    .preview-tree details.preview-tree-leaf:hover,
+    .preview-tree details.preview-tree-leaf:focus-within {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(167, 243, 208, 0.18);
+    }
+
+    .preview-tree summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .preview-tree summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .preview-tree-name {
+      color: var(--accent-strong);
+      font-weight: 600;
+    }
+
+    .preview-tree-select {
+      appearance: none;
+      border: none;
+      padding: 0;
+      background: transparent;
+      color: var(--accent-strong);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .preview-tree-select:hover,
+    .preview-tree-select:focus-visible {
+      color: var(--text);
+      outline: none;
+    }
+
+    .preview-tree-meta {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .preview-tree-body {
+      display: grid;
+      gap: 8px;
+      padding: 0 10px 10px;
+    }
+
+    .tooltip {
+      min-width: 180px;
+      max-width: 280px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      pointer-events: none;
+      opacity: 0;
+      transform: translate3d(12px, 12px, 0);
+      transition: opacity 120ms ease;
+    }
+
+    .tooltip.visible {
+      opacity: 1;
+    }
+
+    .tooltip-title {
+      margin: 0 0 4px;
+      font-size: 0.96rem;
+      color: var(--text);
+    }
+
+    .tooltip-copy {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    .footer-note {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      z-index: 2;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--panel-line);
+      background: rgba(7, 12, 24, 0.62);
+      color: var(--muted);
+      font-size: 0.86rem;
+      backdrop-filter: blur(12px);
+    }
+
+    @media (max-width: 900px) {
+      html,
+      body {
+        overflow: hidden;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      #scene {
+        width: 100vw;
+        height: 50vh;
+        flex: 0 0 50vh;
+      }
+
+      .hud {
+        position: relative;
+        z-index: 1;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        flex: 1 1 50vh;
+        max-height: 50vh;
+        border-radius: 22px 22px 0 0;
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
+        padding: 14px 16px 20px;
+      }
+
+      .footer-note {
+        right: 12px;
+        bottom: calc(50vh + 10px);
+      }
+    }
+
+    a {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <div class="eyebrow">Virtual Worlds Museum</div>
+    <h1>Virtual Worlds Museum Index</h1>
+    <p>
+      Our index radiates from the museum into one ring of major categories, with their linked nodes pouring beneath each exhibit.
+    </p>
+    <div class="meta">
+      <p class="meta-row"><strong id="status">Loading graph...</strong></p>
+      <p class="legend" style="display: none;">The center links to one category ring. Falling nodes show each category's connected records.</p>
+      <div class="preview">
+        <p class="preview-title" id="preview-title">No selection</p>
+        <p class="preview-copy" id="preview-copy">Hover a node for a quick look, then click to pin it here.</p>
+        <div class="preview-actions">
+          <a id="preview-museum-link" class="preview-button museum-link" href="#" target="_blank" rel="noreferrer noopener" hidden>Museum Location</a>
+          <a id="preview-world-link" class="preview-button world-link" href="#" target="_blank" rel="noreferrer noopener" hidden>World Link</a>
+        </div>
+        <a id="preview-snapshot" class="preview-snapshot" href="#" target="_blank" rel="noreferrer noopener" hidden>
+          <img id="preview-snapshot-image" alt="" loading="lazy" decoding="async" />
+        </a>
+        <section id="preview-details-section" class="preview-section" hidden>
+          <p class="preview-section-title">Details</p>
+          <div id="preview-details" class="preview-details"></div>
+        </section>
+        <section id="preview-locations-section" class="preview-section" hidden>
+          <p class="preview-section-title">Major Categories</p>
+          <div id="preview-locations" class="preview-tree"></div>
+        </section>
+        <section id="preview-connected-section" class="preview-section" hidden>
+          <p class="preview-section-title">Connected Worlds</p>
+          <div id="preview-connected" class="preview-tree"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+  <div id="scene"></div>
+  <div id="tooltip" class="tooltip" aria-hidden="true">
+    <p class="tooltip-title" id="tooltip-title"></p>
+    <p class="tooltip-copy" id="tooltip-copy"></p>
+  </div>
+  <div class="footer-note">Data source: <a href="./vwm.json">vwm.json</a></div>
+
+  <script type="module" src="./ring3d.js"></script>
+</body>
 </html>
