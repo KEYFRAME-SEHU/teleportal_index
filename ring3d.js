@@ -931,7 +931,7 @@ function scrollPreviewToTop() {
 
 function attachOrbitControls(camera, host) {
   const target = new THREE.Vector3(0, 0, 0);
-  const spherical = new THREE.Spherical(92, 1.08, 0.18);
+  const spherical = new THREE.Spherical(47, 1.08, 0.18);
   let dragging = false;
   const pointer = { x: 0, y: 0 };
 
