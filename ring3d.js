@@ -1081,10 +1081,6 @@ async function init() {
   rootGroup.add(rootMesh);
   registerInteractiveMesh(rootMesh);
 
-  const rootLabel = createLabelSprite(rootNode.name || "Virtual Worlds Museum", `${exhibits.length} major categories`, new THREE.Vector3(17, 4.1, 1));
-  rootLabel.position.copy(rootPosition.clone().add(new THREE.Vector3(0, rootRadius + 4.2, 0)));
-  rootGroup.add(rootLabel);
-
   const categoryRingPoints = [];
   for (let index = 0; index <= 128; index += 1) {
     const angle = (index / 128) * Math.PI * 2;
