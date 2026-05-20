@@ -18,6 +18,10 @@ const previewLocationsSectionNode = document.getElementById("preview-locations-s
 const previewLocationsNode = document.getElementById("preview-locations");
 const previewConnectedSectionNode = document.getElementById("preview-connected-section");
 const previewConnectedNode = document.getElementById("preview-connected");
+const sceneSearchForm = document.getElementById("scene-search-form");
+const sceneSearchInput = document.getElementById("scene-search-input");
+const searchResultsSectionNode = document.getElementById("search-results-section");
+const searchResultsNode = document.getElementById("search-results");
 
 const SNAPSHOT_BASE_URL = "https://www.virtualworldsmuseum.com/large-graph/";
 
@@ -408,6 +412,113 @@ function createNode(tag, options = {}, children = []) {
   });
 
   return node;
+}
+
+function normalizeSearchInput(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isNodeMatch(nodeData, query) {
+  if (!query || !nodeData) {
+    return false;
+  }
+
+  return normalizeSearchInput(nodeData.name).includes(query);
+}
+
+function getMatchingNodes(graph, query) {
+  const normalizedQuery = normalizeSearchInput(query);
+  if (!normalizedQuery || !graph) {
+    return [];
+  }
+
+  return [...graph.nodesById.values()].filter((node) => {
+    if (!node || node.id === "0" || node.duplicate) {
+      return false;
+    }
+
+    return isNodeMatch(node, normalizedQuery);
+  });
+}
+
+function renderSearchResults(matches, query) {
+  clearNode(searchResultsNode);
+
+  if (!query || !query.trim()) {
+    searchResultsSectionNode.hidden = true;
+    return;
+  }
+
+  searchResultsSectionNode.hidden = false;
+  previewDetailsSectionNode.hidden = true;
+  previewLocationsSectionNode.hidden = true;
+  previewConnectedSectionNode.hidden = true;
+
+  const header = createNode("div", { className: "search-results-header" }, [
+    createNode("span", { className: "preview-meta", text: `${matches.length} matching worlds` })
+  ]);
+  searchResultsNode.appendChild(header);
+
+  if (!matches.length) {
+    searchResultsNode.appendChild(createNode("p", { className: "value-empty", text: "No matching worlds found." }));
+    return;
+  }
+
+  const list = createNode("div", { className: "search-results-grid" });
+  matches.forEach((nodeData) => {
+    const item = createNode("button", {
+      className: "search-result-card",
+      text: nodeData.name || nodeData.id,
+      attributes: {
+        type: "button"
+      }
+    });
+
+    item.appendChild(createNode("span", {
+      className: "preview-meta",
+      text: nodeData.category || "World"
+    }));
+
+    item.addEventListener("click", () => {
+      window.__ringSelectNode?.(nodeData.id);
+      sceneSearchInput?.focus();
+    });
+
+    list.appendChild(item);
+  });
+
+  searchResultsNode.appendChild(list);
+}
+
+function updateSearchHighlights(query) {
+  const normalizedQuery = normalizeSearchInput(query);
+  const hasQuery = Boolean(normalizedQuery);
+
+  interactiveMeshes.forEach((mesh) => {
+    const nodeData = mesh.userData?.nodeData;
+    if (!nodeData) {
+      return;
+    }
+
+    const matches = hasQuery && normalizeSearchInput(nodeData.name).includes(normalizedQuery);
+    mesh.userData.isSearchMatch = matches;
+
+    if (matches) {
+      if (mesh.material.color) {
+        mesh.material.color.setHex(0xffd74f);
+      }
+      if (mesh.material.emissive) {
+        mesh.material.emissive.setHex(0xffd74f);
+      }
+    } else {
+      if (mesh.userData.originalColor && mesh.material.color) {
+        mesh.material.color.copy(mesh.userData.originalColor);
+      }
+      if (mesh.userData.originalEmissive && mesh.material.emissive) {
+        mesh.material.emissive.copy(mesh.userData.originalEmissive);
+      }
+    }
+  });
 }
 
 function appendLinkedText(container, text) {
@@ -920,6 +1031,19 @@ async function init() {
   function registerInteractiveMesh(mesh) {
     interactiveMeshes.push(mesh);
 
+    if (!mesh.userData) {
+      mesh.userData = {};
+    }
+
+    if (mesh.material) {
+      if (mesh.material.color && !mesh.userData.originalColor) {
+        mesh.userData.originalColor = mesh.material.color.clone();
+      }
+      if (mesh.material.emissive && !mesh.userData.originalEmissive) {
+        mesh.userData.originalEmissive = mesh.material.emissive.clone();
+      }
+    }
+
     const nodeId = mesh.userData?.nodeData?.id;
     if (nodeId && !nodeMeshById.has(nodeId)) {
       nodeMeshById.set(nodeId, mesh);
@@ -1199,6 +1323,23 @@ async function init() {
   renderer.domElement.addEventListener("click", () => {
     setSelectedMesh(hoveredMesh);
   });
+
+  if (sceneSearchInput && sceneSearchForm && searchResultsNode && searchResultsSectionNode) {
+    sceneSearchInput.addEventListener("input", () => {
+      const query = sceneSearchInput.value;
+      updateSearchHighlights(query);
+      if (!query.trim()) {
+        renderSearchResults([], "");
+      }
+    });
+
+    sceneSearchForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const query = sceneSearchInput.value.trim();
+      const matches = getMatchingNodes(graph, query);
+      renderSearchResults(matches, query);
+    });
+  }
 
   window.addEventListener("resize", () => {
     const sceneSize = getSceneSize();
