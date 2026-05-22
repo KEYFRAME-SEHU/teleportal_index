@@ -979,7 +979,7 @@ function attachOrbitControls(camera, host) {
 }
 
 async function loadGraph() {
-  const response = await fetch("./vwm.json");
+  const response = await fetch("https://www.virtualworldsmuseum.com/teleportal/vwm.json");
   if (!response.ok) {
     throw new Error(`Failed to load vwm.json: ${response.status}`);
   }
